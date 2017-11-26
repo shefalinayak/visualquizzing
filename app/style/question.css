@@ -1,0 +1,29 @@
+body {
+  font-family: "Lucida Console", Monaco, monospace;
+  margin: 0;
+  background: #fff;
+}
+#question {
+  width: 800px;
+  margin: auto;
+}
+#treeDiv {
+  float: left;
+  width: 600px;
+}
+#menu {
+  float: right;
+  width: 188px;
+  height: 400px;
+}
+#error {
+  color: red;
+  text-align: left;
+}
+button {
+  font-family: "Lucida Console", Monaco, monospace;
+  background-color: #ccc;
+  width: 100%;
+  border-radius: 8px;
+  font-size: 20px;
+}
