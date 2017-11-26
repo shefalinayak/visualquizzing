@@ -239,9 +239,6 @@ class Tree {
 
   styleNodes(container) {
     container
-      .selectAll(".node")
-      .style("fill", "white");
-    container
       .selectAll(".node .unselected")
       .style("stroke", "black")
       .style("stroke-width", "3px");
