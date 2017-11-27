@@ -1,53 +1,7 @@
 import React from 'react';
 import { Tree, RBTree } from './tree';
 import * as d3 from 'd3';
-
-var treeData1 = {
-  name: "62",
-  children: [
-    {
-      name: "35",
-      children: [
-        {
-          name: "28",
-          children: [
-            {
-              name: "16",
-              children: [{}, {}]
-            },
-            {
-              name: "32",
-              children: [{}, {}]
-            }
-          ]
-        },
-        {
-          name: "40",
-          children: [
-            {
-              name: "51",
-              children: [{}, {}]
-            },
-            {}
-          ]
-        }
-      ]
-    },
-    {
-      name: "78",
-      children: [
-        {
-          name: "65",
-          children: [{}, {}]
-        },
-        {
-          name: "93",
-          children: [{}, {}]
-        }
-      ]
-    }
-  ]
-};
+import * as treedata from './data';
 
 class BSTreeInsert extends React.Component {
   constructor(props) {
@@ -59,7 +13,9 @@ class BSTreeInsert extends React.Component {
   }
 
   componentDidMount() {
-    let tree = new Tree("treeDiv", treeData1, ["60"]);
+    var datatree = treedata.getHierarchy(treedata.data20tree);
+    var datains = treedata.data10ins.split(" ");
+    let tree = new Tree("treeDiv", datatree, datains);
     this.state.tree = tree;
     d3.select("#menu")
     .append("button")
@@ -79,7 +35,9 @@ class BSTreeInsert extends React.Component {
     return (
       <div id="question">
         <h2>BST Insertion</h2>
-        <p>Insert the key "60" into the Binary Search Tree shown below.</p>
+        <p>Consider the BST shown below. What is the tree that results after inserting the following sequence of keys:</p>
+        <p>{treedata.data10ins}</p>
+        <p>To insert a key into the tree, click on the empty node where you want it to be inserted.</p>
         <p></p>
         <div id="treeDiv"></div>
         <div id="error"></div>
@@ -100,7 +58,8 @@ class BSTreeSearch extends React.Component {
   }
 
   componentDidMount() {
-    let tree = new Tree("treeDiv", treeData1);
+    var datatree = treedata.getHierarchy(treedata.data20tree);
+    let tree = new Tree("treeDiv", datatree);
     this.state.tree = tree;
     d3.select("#menu")
     .append("button")
@@ -120,7 +79,7 @@ class BSTreeSearch extends React.Component {
     return (
       <div id="question">
         <h2>BST Search</h2>
-        <p>Select the nodes that would be compared with "49" in a search miss.</p>
+        <p>Suppose that you search for the key {treedata.data20key} in the BST shown below. What is the sequence of keys in the BST that are compared with 40 during the search miss?</p>
         <p></p>
         <div id="treeDiv"></div>
         <div id="error"></div>
@@ -141,7 +100,8 @@ class RBTreeColor extends React.Component {
   }
 
   componentDidMount() {
-    let tree = new RBTree("treeDiv", treeData1);
+    var datatree = treedata.getHierarchy(treedata.data30);
+    let tree = new RBTree("treeDiv", datatree);
     this.state.tree = tree;
     d3.select("#menu")
     .append("button")
@@ -161,7 +121,8 @@ class RBTreeColor extends React.Component {
     return (
       <div id="question">
         <h2>Red Black BST Coloring</h2>
-        <p>Consider the left-leaning Red-Black BST shown below. Select the red nodes. A node is red if the link from its parent is red.</p>
+        <p>Consider the left-leaning red-black BST shown below. Select the keys in the red nodes. A node is red if the link from its parent is red.</p>
+        <p>To select a node, click on it. Click again to deselect. When you are done, click "Get Output".</p>
         <p></p>
         <div id="treeDiv"></div>
         <div id="error"></div>
@@ -182,7 +143,9 @@ class RBTreeInsert extends React.Component {
   }
 
   componentDidMount() {
-    let tree = new RBTree("treeDiv", treeData1, ["60"]);
+    var datatree = treedata.getHierarchy(treedata.data40tree);
+    var datains = treedata.data40ins.split(" ");
+    let tree = new RBTree("treeDiv", datatree, datains);
     this.state.tree = tree;
 
     d3.select("#menu")
@@ -228,7 +191,10 @@ class RBTreeInsert extends React.Component {
     return (
       <div id="question">
         <h2>Red Black BST Insertion</h2>
-        <p>Insert the following nodes into the Red-Black BST shown below.</p>
+        <p>Consider the left-leaning red-black BST shown below. What is the resulting tree after inserting the following sequence of keys:</p>
+        <p>{treedata.data40ins}</p>
+        <p>To help you start, the red nodes are: {treedata.data40red}.</p>
+        <p>To insert a key, click on the empty node where you want it to be. Click on non-empty nodes to toggle colors between red and black. To rotate, select a node and its parent. When you are done, click the "Get Output" button to generate your answer.</p>
         <p></p>
         <div id="treeDiv"></div>
         <div id="error"></div>
