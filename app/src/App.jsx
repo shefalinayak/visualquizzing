@@ -13,7 +13,7 @@ class BSTreeInsert extends React.Component {
   }
 
   componentDidMount() {
-    var datatree = treedata.getHierarchy(treedata.data20tree);
+    var datatree = treedata.getHierarchy(treedata.data10tree);
     var datains = treedata.data10ins.split(" ");
     let tree = new Tree("treeDiv", datatree, datains);
     this.state.tree = tree;
