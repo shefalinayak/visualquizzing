@@ -1,6 +1,6 @@
 // BST Insertion
 export const data10tree = "32 30 56 17 42 67 54 61 89 66";
-export const data10ins = "23 95 61";
+export const data10ins = "23 95 60";
 export const data11tree = "38 20 75 10 26 46 98 23 44 66";
 export const data11ins = "16 17 57";
 

@@ -1,7 +1,8 @@
 import * as d3 from 'd3';
+var clone = require('clone');
 
 class Tree {
-  constructor(divID, data, toInsert) {
+  constructor(divID, data, toInsert, maxSelection) {
     this.divId = divID;
 
     var margin = { top: 30, right: 5, bottom: 20, left: 5 };
@@ -12,16 +13,23 @@ class Tree {
     this.i = 0;
     this.duration = 100;
 
-    this.selected = [-1];
-    this.toInsert = toInsert;
-    this.toRotate = [-1];
-    this.onRotate = false;
     this.treemap = d3.tree().size([this.width, this.height]);
-    this.root = d3.hierarchy(data, function(d) {
+
+    var root = d3.hierarchy(data, function(d) {
       return d.children;
     });
-    this.root.x0 = this.width / 2;
-    this.root.y0 = 0;
+    root.x0 = this.width / 2;
+    root.y0 = 0;
+
+    this.toRotate = [-1];
+    this.onRotate = false;
+
+    this.state = [{
+      root: root,
+      toInsert: toInsert,
+      selected: [-1],
+      red: [-1]
+    }];
 
     this.svg = d3
       .select(`#${this.divId}`)
@@ -31,9 +39,16 @@ class Tree {
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
+    this.maxSelection = maxSelection + 1;
+
     this.diagonal = this.diagonal.bind(this);
-    this.insertClick = this.insertClick.bind(this);
-    this.selectClick = this.selectClick.bind(this);
+    this.select = this.select.bind(this);
+    this.deselect = this.deselect.bind(this);
+    this.color = this.color.bind(this);
+    this.uncolor = this.uncolor.bind(this);
+    this.insert = this.insert.bind(this);
+    this.remove = this.remove.bind(this);
+    this.toggleSelect = this.toggleSelect.bind(this);
     this.onclick = this.onclick.bind(this);
     this.getNodeClass = this.getNodeClass.bind(this);
     this.styleNodes = this.styleNodes.bind(this);
@@ -41,43 +56,9 @@ class Tree {
     this.getLinkClass = this.getLinkClass.bind(this);
     this.getLevelOrder = this.getLevelOrder.bind(this);
     this.getSelected = this.getSelected.bind(this);
-    this.insert = this.insert.bind(this);
+    this.undo = this.undo.bind(this);
 
-    this.update(this.root);
-  }
-
-  insert(d) {
-    if (this.toInsert.length == 0) return;
-    d.data.name = this.toInsert.shift();
-
-    var leftNode = {
-      type: 'node-type',
-      name: "",
-    };
-    var rightNode = {
-      type: 'node-type',
-      name: "",
-    };
-
-    var childL = d3.hierarchy(leftNode, function(d) {
-      return d.children;
-    });
-    childL.depth = d.depth + 1;
-    childL.parent = d;
-    var childR = d3.hierarchy(rightNode, function(d) {
-      return d.children;
-    });
-    childR.depth = d.depth + 1;
-    childR.parent = d;
-
-    d.children = [];
-    d.data.children = [];
-    d.children.push(childL);
-    d.data.children.push(childL);
-    d.children.push(childR);
-    d.data.children.push(childR);
-
-    this.update(d);
+    this.update(this.state[0].root);
   }
 
   getSelected() {
@@ -113,14 +94,19 @@ class Tree {
     return levelOrder;
   }
 
+  // updates current state
   update(src) {
     var treeObj = this;
+    // get reference to current state
+    var currentState = this.state.pop();
+    this.state.push(currentState);
     // Assign x and y position for the nodes
-    var treeData = this.treemap(this.root);
+    var treeData = this.treemap(currentState.root);
     // Compute the new tree layout
     var nodes = treeData.descendants();
     var links = treeData.descendants().slice(1);
     // Normalize for fixed depth
+    // Account for extra reds
     nodes.forEach(function(d) {
       d.depth = d.parent ? d.parent.depth + 1 : 0;
       d.y = d.children ? d.depth * 80 : d.parent.y + 40;
@@ -235,6 +221,11 @@ class Tree {
       return treeObj.diagonal(o, o);
     })
     .remove();
+
+    if (currentState.toInsert) {
+      var nextInsert = currentState.toInsert[0];
+      d3.select('span').html(nextInsert);
+    }
   }
 
   styleNodes(container) {
@@ -251,9 +242,20 @@ class Tree {
       .style("stroke-width", "5px");
   }
 
+  styleLinks(container) {
+    container.selectAll(".link").style("stroke", "black");
+    container
+      .selectAll(".link")
+      .filter(".leaf")
+      .style("stroke", "gray");
+  }
+
   getNodeClass(d) {
+    var currentState = this.state.pop();
+    this.state.push(currentState);
+
     var classes = "node ";
-    var ind = this.selected.indexOf(d);
+    var ind = currentState.selected.indexOf(d);
     if (ind >= 0) {
       classes += "selected ";
     } else {
@@ -265,14 +267,6 @@ class Tree {
     return classes;
   }
 
-  styleLinks(container) {
-    container.selectAll(".link").style("stroke", "black");
-    container
-      .selectAll(".link")
-      .filter(".leaf")
-      .style("stroke", "gray");
-  }
-
   getLinkClass(d) {
     var classes = "link ";
     if (!d.data.name) {
@@ -282,25 +276,173 @@ class Tree {
   }
 
   onclick(d) {
-    if (this.toInsert) this.insertClick(d);
-    else this.selectClick(d);
+    var currentState = this.state.pop();
+    this.state.push(currentState);
+
+    if (currentState.toInsert) this.insert(d);
+    else this.toggleSelect(d);
   }
 
-  insertClick(d) {
-    if (!d.data.name) {
-      this.insert(d);
+  toggleSelect(d) {
+    var currentState = this.state.pop();
+    this.state.push(currentState);
+
+    if (!d.data.name) return;
+    console.log(d.data.name);
+    var ind = currentState.selected.indexOf(d);
+    if (ind < 0) this.select(d);
+    else this.deselect(d);
+    this.update(d);
+  }
+
+  // changes state
+  insert(d) {
+    // peek at top of state stack for current state
+    var newState = this.state.pop();
+    // duplicate to remember old state
+    var oldState = clone(newState);
+    this.state.push(oldState);
+    this.state.push(newState);
+
+    // only insert if there are items to insert
+    if (newState.toInsert.length == 0) return;
+    // only insert in empty nodes
+    if (d.data.name) {
+      console.log("Error: cannot insert in non-empty node");
+      return;
+    }
+
+    // set value
+    d.data.name = newState.toInsert.shift();
+
+    // create children
+    var leftNode = {
+      type: 'node-type',
+      name: "",
+    };
+    var rightNode = {
+      type: 'node-type',
+      name: "",
+    };
+
+    var childL = d3.hierarchy(leftNode, function(d) {
+      return d.children;
+    });
+    childL.depth = d.depth + 1;
+    childL.parent = d;
+    var childR = d3.hierarchy(rightNode, function(d) {
+      return d.children;
+    });
+    childR.depth = d.depth + 1;
+    childR.parent = d;
+
+    d.children = [];
+    d.data.children = [];
+    d.children.push(childL);
+    d.data.children.push(childL);
+    d.children.push(childR);
+    d.data.children.push(childR);
+
+    // set as red and deselect
+    newState.red.push(d);
+    var ind = newState.selected.indexOf(d);
+    if (ind >= 0) newState.selected.splice(ind, 1);
+
+    this.update(d);
+  }
+
+  // changes state
+  remove(d) {
+    // peek at top of state stack for current state
+    var newState = this.state.pop();
+    // duplicate to remember old state
+    var oldState = clone(newState);
+    this.state.push(oldState);
+    this.state.push(newState);
+
+    if (d.children[0].name || d.children[1].name) {
+      console.log("Error: cannot remove node with children");
+      return;
+    }
+
+    var p = d.parent;
+    if (p.children[0] == d) {
+      p.children[0] = {};
     } else {
-      console.log(d.data.name);
+      p.children[1] = {};
     }
   }
 
-  selectClick(d) {
+  // changes state
+  select(d) {
+    // peek at top of state stack for current state
+    var newState = this.state.pop();
+    // duplicate to remember old state
+    var oldState = clone(newState);
+    this.state.push(oldState);
+    this.state.push(newState);
+
     if (!d.data.name) return;
-    console.log(d.data.name);
-    var ind = this.selected.indexOf(d);
-    if (ind < 0) this.selected.push(d);
-    else this.selected.splice(ind, 1);
-    this.update(d);
+    var ind = newState.selected.indexOf(d);
+    if (ind < 0) {
+      if (newState.selected.length == this.maxSelection) {
+        newState.selected.pop();
+      }
+      newState.selected.push(d);
+    }
+  }
+
+  // changes state
+  deselect(d) {
+    // peek at top of state stack for current state
+    var newState = this.state.pop();
+    // duplicate to remember old state
+    var oldState = clone(newState);
+    this.state.push(oldState);
+    this.state.push(newState);
+
+    if (!d.data.name) return;
+    var ind = newState.selected.indexOf(d);
+    if (ind >= 0) newState.selected.splice(ind, 1);
+  }
+
+  // changes state
+  color(d) {
+    // peek at top of state stack for current state
+    var newState = this.state.pop();
+    // duplicate to remember old state
+    var oldState = clone(newState);
+    this.state.push(oldState);
+    this.state.push(newState);
+
+    if (!d.data.name) return;
+    var ind = newState.red.indexOf(d);
+    if (ind < 0) newState.red.push(d);
+  }
+
+  // changes state
+  uncolor(d) {
+    // peek at top of state stack for current state
+    var newState = this.state.pop();
+    // duplicate to remember old state
+    var oldState = clone(newState);
+    this.state.push(oldState);
+    this.state.push(newState);
+
+    if (!d.data.name) return;
+    var ind = newState.red.indexOf(d);
+    if (ind >= 0) newState.red.splice(ind, 1);
+  }
+
+  // reverts to previous state
+  undo() {
+    if (this.state.length < 2) {
+      return;
+    }
+    var currentState = this.state.pop();
+    var oldState = this.state.pop();
+    this.state.push(oldState);
+    this.update(oldState.root);
   }
 
   diagonal(s, d) {
@@ -312,42 +454,66 @@ class Tree {
 }
 
 class RBTree extends Tree {
-  constructor(divID, data, toInsert) {
-    super(divID, data, toInsert);
-    this.rotateClick = this.rotateClick.bind(this);
+  constructor(divID, data, toInsert, maxSelection) {
+    super(divID, data, toInsert, maxSelection);
     this.onclick = this.onclick.bind(this);
     this.getLinkClass = this.getLinkClass.bind(this);
     this.getNodeClass = this.getNodeClass.bind(this);
     this.styleNodes = this.styleNodes.bind(this);
     this.styleLinks = this.styleLinks.bind(this);
+    this.rotateLeft = this.rotateLeft.bind(this);
+    this.rotateRight = this.rotateRight.bind(this);
     this.rotate = this.rotate.bind(this);
+    this.colorFlip = this.colorFlip.bind(this);
+
+    // Account for extra reds
+    var currentState = this.state[0];
+    var treeData = this.treemap(currentState.root);
+    var nodes = treeData.descendants();
+    nodes.forEach(function(d) {
+      if (d.data.name == '11' || d.data.name == '18') {
+        currentState.red.push(d);
+      }
+    });
+    this.update(currentState.root);
   }
 
   onclick(d) {
-    if (!d.data.name && this.toInsert) this.insert(d);
+    var currentState = this.state.pop();
+    this.state.push(currentState);
+
+    if (!d.data.name && currentState.toInsert) {
+      this.insert(d);
+      this.toggleSelect(d);
+    }
     else if (this.onRotate) this.rotateClick(d);
-    else this.selectClick(d);
+    else this.toggleSelect(d);
   }
 
-  rotateClick(d) {
-    if (!d.data.name) return;
-    console.log(d.data.name);
-    var ind = this.toRotate.indexOf(d);
-    if (ind < 0) {
-      if (this.toRotate.length > 2) return;
-      this.toRotate.push(d);
-    }
-    else this.toRotate.splice(ind, 1);
-    this.update(d);
+  rotateRight() {
+    this.rotate(false);
+  }
+
+  rotateLeft() {
+    this.rotate(true);
   }
 
   getLinkClass(d) {
+    var currentState = this.state.pop();
+    this.state.push(currentState);
+
     var classes = "link ";
-    var ind = this.selected.indexOf(d);
+    var ind = currentState.selected.indexOf(d);
     if (ind >= 0) {
       classes += "selected ";
     } else {
       classes += "unselected ";
+    }
+    ind = currentState.red.indexOf(d);
+    if (ind >= 0) {
+      classes += "red ";
+    } else {
+      classes += "black ";
     }
     if (!d.data.name) {
       classes += "leaf ";
@@ -356,18 +522,21 @@ class RBTree extends Tree {
   }
 
   getNodeClass(d) {
+    var currentState = this.state.pop();
+    this.state.push(currentState);
+
     var classes = "node ";
-    var ind = this.selected.indexOf(d);
+    var ind = currentState.selected.indexOf(d);
     if (ind >= 0) {
       classes += "selected ";
     } else {
       classes += "unselected ";
     }
-    var ind2 = this.toRotate.indexOf(d);
-    if (ind2 >= 0) {
-      classes += "rotate ";
+    ind = currentState.red.indexOf(d);
+    if (ind >= 0) {
+      classes += "red ";
     } else {
-      classes += "unrotate "
+      classes += "black "
     }
     if (!d.data.name) {
       classes += "leaf ";
@@ -377,42 +546,90 @@ class RBTree extends Tree {
 
   styleNodes(container) {
     container.selectAll(".node").style("stroke-width", "3px");
-    container.selectAll(".node .rotate").style("fill", "paleturquoise");
-    container.selectAll(".node .unrotate").style("fill", "#fff");
-    container.selectAll(".node .unselected").style("stroke", "black");
+    container.selectAll(".node .selected").style("fill", "paleturquoise");
+    container.selectAll(".node .unselected").style("fill", "#fff");
+    container.selectAll(".node .black").style("stroke", "black");
     container.selectAll(".node .leaf").style("stroke", "gray");
-    container.selectAll(".node .selected").style("stroke", "red");
+    container.selectAll(".node .red").style("stroke", "red");
   }
 
   styleLinks(container) {
     container
       .selectAll(".link")
-      .filter(".unselected")
+      .filter(".black")
       .style("stroke", "black");
     container
       .selectAll(".link")
-      .filter(".selected")
+      .filter(".red")
       .style("stroke", "red");
   }
 
-  rotate() {
-    if (this.toRotate.length < 3) {
-      console.log("Error: Must Select Two Nodes");
+  colorFlip() {
+    // peek at top of state stack for current state
+    var newState = this.state.pop();
+    // duplicate to remember old state
+    var oldState = clone(newState);
+    this.state.push(oldState);
+    this.state.push(newState);
+
+    if (newState.selected.length < 2) {
+      console.log("Must select node to color flip");
+      return;
     }
 
-    var n1 = this.toRotate[1];
-    var n2 = this.toRotate[2];
+    var d = newState.selected.pop();
+    if (!d.data.name) {
+      this.state.pop();
+      console.log("Cannot color flip null node");
+      return;
+    }
+
+    var cl = d.children[0];
+    var cr = d.children[1];
+
+    var cl_ind = newState.red.indexOf(cl);
+    if (cl_ind < 0 && cl.data.name) newState.red.push(cl);
+    else newState.red.splice(cl_ind, 1);
+
+    var cr_ind = newState.red.indexOf(cr);
+    if (cr_ind < 0 && cr.data.name) newState.red.push(cr);
+    else newState.red.splice(cr_ind, 1);
+
+    var d_ind = newState.red.indexOf(d);
+    if (d_ind < 0) newState.red.push(d);
+    else newState.red.splice(d_ind, 1);
+
+    newState.selected = [-1];
+    this.update(d);
+  }
+
+  rotate(isLeft) {
+    // peek at top of state stack for current state
+    var newState = this.state.pop();
+    // duplicate to remember old state
+    var oldState = clone(newState);
+    this.state.push(oldState);
+    this.state.push(newState);
+
+    if (newState.selected.length < 2) {
+      console.log("Error: Must Select Node to Rotate");
+    }
+
+    // node to rotate
+    var nodeToRotate = newState.selected.pop();
 
     var child;
+    if (isLeft) child = nodeToRotate.children[1];
+    else child = nodeToRotate.children[0];
 
-    if (n1.parent == n2) child = n1;
-    else if (n2.parent == n1) child = n2;
-    else console.log("Error: Nodes Must Be Linked");
+    if (!child.data.name) {
+      console.log("Error: Cannot Rotate in this Direction");
+    }
 
     var parent = child.parent;
     var grandparent = parent.parent;
-    var left = parent.children[1] === child;
-    if (left) {
+
+    if (isLeft) {
       var grandchild = child.children[0];
       parent.children[1] = grandchild;
       grandchild.parent = parent;
@@ -439,9 +656,23 @@ class RBTree extends Tree {
       child.parent = null;
     }
 
-    this.toRotate = [-1];
+    // child color = parent color
+    var XisRed = newState.red.indexOf(child) != -1;
+    var DisRed = newState.red.indexOf(parent) != -1;
+    if (XisRed != DisRed) {
+      if (DisRed) newState.red.push(child);
+      else {
+        var ind = newState.red.indexOf(child);
+        newState.red.splice(ind, 1);
+      }
+    }
+    // parent color = red
+    if (!DisRed) {
+      newState.red.push(parent);
+    }
 
-    this.update(this.root);
+    newState.selected = [-1];
+    this.update(newState.root);
   }
 }
 

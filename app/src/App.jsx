@@ -15,7 +15,7 @@ class BSTreeInsert extends React.Component {
   componentDidMount() {
     var datatree = treedata.getHierarchy(treedata.data10tree);
     var datains = treedata.data10ins.split(" ");
-    let tree = new Tree("treeDiv", datatree, datains);
+    let tree = new Tree("treeDiv", datatree, datains, 100);
     this.state.tree = tree;
     d3.select("#menu")
     .append("button")
@@ -24,6 +24,10 @@ class BSTreeInsert extends React.Component {
       var ans = document.getElementById("answer");
       ans.setAttribute("value", tree.getLevelOrder());
     });
+    d3.select("#menu")
+    .append("button")
+    .text("Undo")
+    .on("click", tree.undo);
     d3.select("#result")
     .insert("input")
     .attr("type", "text")
@@ -38,6 +42,7 @@ class BSTreeInsert extends React.Component {
         <p>Consider the BST shown below. What is the tree that results after inserting the following sequence of keys:</p>
         <p>{treedata.data10ins}</p>
         <p>To insert a key into the tree, click on the empty node where you want it to be inserted.</p>
+        <p><strong>Next node to insert: <span id="next_insert"></span></strong></p>
         <p></p>
         <div id="treeDiv"></div>
         <div id="error"></div>
@@ -59,7 +64,7 @@ class BSTreeSearch extends React.Component {
 
   componentDidMount() {
     var datatree = treedata.getHierarchy(treedata.data20tree);
-    let tree = new Tree("treeDiv", datatree);
+    let tree = new Tree("treeDiv", datatree, [], 100);
     this.state.tree = tree;
     d3.select("#menu")
     .append("button")
@@ -68,6 +73,10 @@ class BSTreeSearch extends React.Component {
       var ans = document.getElementById("answer");
       ans.setAttribute("value", tree.getSelected());
     });
+    d3.select("#menu")
+    .append("button")
+    .text("Undo")
+    .on("click", tree.undo);
     d3.select("#result")
     .insert("input")
     .attr("type", "text")
@@ -101,7 +110,7 @@ class RBTreeColor extends React.Component {
 
   componentDidMount() {
     var datatree = treedata.getHierarchy(treedata.data30);
-    let tree = new RBTree("treeDiv", datatree);
+    let tree = new RBTree("treeDiv", datatree, [], 100);
     this.state.tree = tree;
     d3.select("#menu")
     .append("button")
@@ -110,6 +119,10 @@ class RBTreeColor extends React.Component {
       var ans = document.getElementById("answer");
       ans.setAttribute("value", tree.getSelected());
     });
+    d3.select("#menu")
+    .append("button")
+    .text("Undo")
+    .on("click", tree.undo);
     d3.select("#result")
     .insert("input")
     .attr("type", "text")
@@ -145,13 +158,8 @@ class RBTreeInsert extends React.Component {
   componentDidMount() {
     var datatree = treedata.getHierarchy(treedata.data40tree);
     var datains = treedata.data40ins.split(" ");
-    let tree = new RBTree("treeDiv", datatree, datains);
+    let tree = new RBTree("treeDiv", datatree, datains, 1);
     this.state.tree = tree;
-
-    d3.select("#menu")
-    .append("button")
-    .text("Rotate")
-    .on("click", tree.rotate);
 
     d3.select("#menu")
     .append("button")
@@ -160,31 +168,27 @@ class RBTreeInsert extends React.Component {
       var ans = document.getElementById("answer");
       ans.setAttribute("value", tree.getLevelOrder());
     });
-
+    d3.select("#menu")
+    .append("button")
+    .text("Rotate Left")
+    .on("click", tree.rotateLeft);
+    d3.select("#menu")
+    .append("button")
+    .text("Rotate Right")
+    .on("click", tree.rotateRight);
+    d3.select("#menu")
+    .append("button")
+    .text("Color Flip")
+    .on("click", tree.colorFlip);
+    d3.select("#menu")
+    .append("button")
+    .text("Undo")
+    .on("click", tree.undo);
     d3.select("#result")
     .insert("input")
     .attr("type", "text")
     .attr("id", "answer")
     .style("width", "100%");
-
-    var colorB = d3.select("#color")
-    .style("color", "black")
-    .style("background-color", "#f55");
-    var rotateB = d3.select("#rotate")
-    .style("color", "#aaa")
-    .style("background-color", "#ccc");
-
-    colorB.on("click", function() {
-      tree.onRotate = false;
-      rotateB.style("color", "#aaa").style("background-color", "#ccc");
-      colorB.style("color", "black").style("background-color", "#f55");
-    });
-
-    rotateB.on("click", function() {
-      tree.onRotate = true;
-      colorB.style("color", "#aaa").style("background-color", "#ccc");
-      rotateB.style("color", "black").style("background-color", "turquoise");
-    });
   }
 
   render() {
@@ -195,12 +199,11 @@ class RBTreeInsert extends React.Component {
         <p>{treedata.data40ins}</p>
         <p>To help you start, the red nodes are: {treedata.data40red}.</p>
         <p>To insert a key, click on the empty node where you want it to be. Click on non-empty nodes to toggle colors between red and black. To rotate, select a node and its parent. When you are done, click the "Get Output" button to generate your answer.</p>
+        <p><strong>Next node to insert: <span id="next_insert"></span></strong></p>
         <p></p>
         <div id="treeDiv"></div>
         <div id="error"></div>
         <div id="menu">
-          <button id="color">Color Red/Black</button>
-          <button id="rotate">Select for Rotation</button>
         </div>
         <div id="result"></div>
       </div>
