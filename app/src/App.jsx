@@ -15,7 +15,7 @@ class BSTreeInsert extends React.Component {
   componentDidMount() {
     var datatree = treedata.getHierarchy(treedata.data10tree);
     var datains = treedata.data10ins.split(" ");
-    let tree = new Tree("treeDiv", datatree, datains, 100);
+    let tree = new Tree("treeDiv", datatree, datains, 100, false);
     this.state.tree = tree;
     d3.select("#menu")
     .append("button")
@@ -64,7 +64,7 @@ class BSTreeSearch extends React.Component {
 
   componentDidMount() {
     var datatree = treedata.getHierarchy(treedata.data20tree);
-    let tree = new Tree("treeDiv", datatree, [], 100);
+    let tree = new Tree("treeDiv", datatree, [], 100, false);
     this.state.tree = tree;
     d3.select("#menu")
     .append("button")
@@ -110,7 +110,7 @@ class RBTreeColor extends React.Component {
 
   componentDidMount() {
     var datatree = treedata.getHierarchy(treedata.data30);
-    let tree = new RBTree("treeDiv", datatree, [], 100);
+    let tree = new RBTree("treeDiv", datatree, [], 100, true);
     this.state.tree = tree;
     d3.select("#menu")
     .append("button")
@@ -158,7 +158,7 @@ class RBTreeInsert extends React.Component {
   componentDidMount() {
     var datatree = treedata.getHierarchy(treedata.data40tree);
     var datains = treedata.data40ins.split(" ");
-    let tree = new RBTree("treeDiv", datatree, datains, 1);
+    let tree = new RBTree("treeDiv", datatree, datains, 1, false);
     this.state.tree = tree;
 
     d3.select("#menu")

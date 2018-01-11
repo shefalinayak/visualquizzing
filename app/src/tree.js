@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 var clone = require('clone');
 
 class Tree {
-  constructor(divID, data, toInsert, maxSelection) {
+  constructor(divID, data, toInsert, maxSelection, isColoring) {
     this.divId = divID;
 
     var margin = { top: 30, right: 5, bottom: 20, left: 5 };
@@ -31,6 +31,8 @@ class Tree {
       red: [-1]
     }];
 
+    this.coloring = isColoring;
+
     this.svg = d3
       .select(`#${this.divId}`)
       .append("svg")
@@ -57,6 +59,7 @@ class Tree {
     this.getLevelOrder = this.getLevelOrder.bind(this);
     this.getSelected = this.getSelected.bind(this);
     this.undo = this.undo.bind(this);
+    this.toggleColor = this.toggleColor.bind(this);
 
     this.update(this.state[0].root);
   }
@@ -279,8 +282,13 @@ class Tree {
     var currentState = this.state.pop();
     this.state.push(currentState);
 
-    if (currentState.toInsert) this.insert(d);
-    else this.toggleSelect(d);
+    if (currentState.toInsert.length > 0) {
+      this.insert(d);
+    } else if (this.coloring) {
+      this.toggleColor(d);
+    } else {
+      this.toggleSelect(d);
+    }
   }
 
   toggleSelect(d) {
@@ -292,6 +300,19 @@ class Tree {
     var ind = currentState.selected.indexOf(d);
     if (ind < 0) this.select(d);
     else this.deselect(d);
+    this.update(d);
+  }
+
+  toggleColor(d) {
+    console.log("toggling color");
+    var currentState = this.state.pop();
+    this.state.push(currentState);
+
+    if (!d.data.name) return;
+    console.log(d.data.name);
+    var ind = currentState.red.indexOf(d);
+    if (ind < 0) this.color(d);
+    else this.uncolor(d);
     this.update(d);
   }
 
@@ -454,8 +475,8 @@ class Tree {
 }
 
 class RBTree extends Tree {
-  constructor(divID, data, toInsert, maxSelection) {
-    super(divID, data, toInsert, maxSelection);
+  constructor(divID, data, toInsert, maxSelection, isColoring) {
+    super(divID, data, toInsert, maxSelection, isColoring);
     this.onclick = this.onclick.bind(this);
     this.getLinkClass = this.getLinkClass.bind(this);
     this.getNodeClass = this.getNodeClass.bind(this);
@@ -475,6 +496,7 @@ class RBTree extends Tree {
         currentState.red.push(d);
       }
     });
+
     this.update(currentState.root);
   }
 
@@ -484,9 +506,8 @@ class RBTree extends Tree {
 
     if (!d.data.name && currentState.toInsert) {
       this.insert(d);
-      this.toggleSelect(d);
     }
-    else if (this.onRotate) this.rotateClick(d);
+    else if (this.coloring) this.toggleColor(d);
     else this.toggleSelect(d);
   }
 
